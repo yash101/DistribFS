@@ -22,6 +22,8 @@ Control packets are used to transmit information via a key-pair multimap. Below 
 |      | key         | key_length bytes          |
 |      | value       | val_length bytes          |
 +------+-------------+---------------------------+
+
+{key_length, val_length, key, value} repeated kv_count times
 ```
 
 ```
@@ -38,4 +40,21 @@ Control packets are used to transmit information via a key-pair multimap. Below 
 |      | key         | key_length bytes          |
 |      | value       | val_length bytes          |
 +------+-------------+---------------------------+
+
+{key_length, val_length, key, value} repeated kv_count times
+```
+
+```
+       RESPONSE PACKET LAYOUT:
++------+-------------+---------------------------+
+| Bits | Name        | Description               |
++======+=============+===========================+
+|  16  | kv_count    | number of keys and values |
+|  8   | key_length  | length of key             |
+|  16  | val_length  | length of value           |
+|      | key         | key data                  |
+|      | value       | value data                |
++------+-------------+---------------------------+
+
+{key_length, val_length, key, value} repeated kv_count times
 ```
