@@ -3,6 +3,7 @@
 
 #include "platformindependence.h"
 #include "packetstructure.h"
+#include <atomic>
 
 namespace Connector {
 	class ServerConnection;
@@ -56,20 +57,40 @@ namespace Connector {
 			ListeningPort6();
 		};
 
+		int64_t tv_sec;
+		int64_t tv_usec;
+
 		std::vector<ListeningPort4> Ports4;
 		std::vector<ListeningPort6> Ports6;
+
+		static const uint32_t yes = 1;
+		static const uint32_t no = 0;
 
 		Connector::ControlPacketReceiveHandlerCB ctrl_recv_cb;
 		Connector::AddressFilterHandlerCB address_filter_cb;
 		int queueLength;
 		bool listening;
 
-		void initialize();
+		void initialize(
+		);
+
+		uint32_t InitializeListeningSockets(
+			fd_set* fds,
+			int* nfds
+		);
+		uint32_t SelectLoop(
+			fd_set& readfds,
+			int nfds
+		);
+		uint32_t ShutDownCleanUp(
+		);
 
 	public:
 
-		ServerConnection();
-		~ServerConnection();
+		ServerConnection(
+		);
+		~ServerConnection(
+		);
 
 		Protocol::Control::ResponsePacket TransmitControlPacket(
 			Protocol::Control::ControlPacket&
@@ -89,6 +110,11 @@ namespace Connector {
 
 		void AddListeningAddress6(
 			struct sockaddr_in6
+		);
+
+		uint32_t SetTimeout(
+			int64_t sec,
+			int64_t usec
 		);
 
 		uint32_t Start(

@@ -9,6 +9,14 @@
 
 #ifdef _WIN32
 
+#ifdef _WIN64
+#pragma comment(lib, ws2_64.lib)
+#else
+#pragma comment(lib, ws2_32.lib)
+#endif
+
+#include <Windows.h>
+
 #else
 
 #include <unistd.h>
@@ -27,8 +35,6 @@ namespace CrossPlatform {
 #ifdef _WIN32
 
 	typedef HANDLE FileDescriptor_t;
-
-#include <Windows.h>
 
 #else
 

@@ -77,23 +77,57 @@ void Connector::ServerConnection::AddListeningAddress6(
 	Ports6.push_back(nPort);
 }
 
-uint32_t Connector::ServerConnection::Start(
+uint32_t Connector::ServerConnection::SetTimeout(
+	int64_t sec,
+	int64_t usec
 ) {
 	if (listening)
 		return ERR_ALREADY_LISTENING;
+
+	tv_sec = sec;
+	tv_usec = usec;
+
+	return ERR_SUCCESS;
+}
+
+#define FAIL_CLOSE_SOCKETS(i, x, a, b) \
+	for(size_t j = 0; j < i; j++) \
+		close(a[i].FileDescriptor); \
+	for(size_t j = 0; j < x; j++) \
+		close(b[i].FileDescriptor) \
+
+uint32_t Connector::ServerConnection::InitializeListeningSockets(
+	fd_set* fds,
+	int* nfds
+) {
+	CrossPlatform::FileDescriptor_t largest;
+	bool flg_largest_init;
 
 	// Set up all the ipv4 ports
 	for (size_t i = 0; i < Ports4.size(); i++) {
 		Ports4[i].FileDescriptor = socket(AF_INET, SOCK_STREAM, 0);
 		if (Ports4[i].FileDescriptor < 0) {
+			FAIL_CLOSE_SOCKETS(i - 1, 0, Ports4, Ports6);
 			return ERR_UNABLE_TO_CREATE_SOCKET;
 		}
 
+		if (setsockopt(
+			Ports4[i].FileDescriptor,
+			SOL_SOCKET,
+			SO_REUSEADDR,
+			&yes,
+			sizeof(yes)
+		) == -1) {
+			FAIL_CLOSE_SOCKETS(i, 0, Ports4, Ports6);
+			return ERR_SOCKOPT_FAILED;
+		}
+
 		if (bind(
-				Ports4[i].FileDescriptor,
-				(struct sockaddr*) &Ports4[i].AddressStructure,
-				sizeof(Ports4[i].AddressStructure)) < 0
-		) {
+			Ports4[i].FileDescriptor,
+			reinterpret_cast<struct sockaddr*>(&Ports4[i].AddressStructure),
+			sizeof(Ports4[i].AddressStructure)) < 0
+			) {
+			FAIL_CLOSE_SOCKETS(i, 0, Ports4, Ports6);
 			return ERR_BIND_FAILED;
 		}
 
@@ -101,20 +135,29 @@ uint32_t Connector::ServerConnection::Start(
 			Ports4[i].FileDescriptor,
 			queueLength
 		);
+
+		FD_SET(Ports4[i].FileDescriptor, fds);
+
+		if (flg_largest_init || Ports4[i].FileDescriptor > largest) {
+			flg_largest_init = true;
+			largest = Ports4[i].FileDescriptor;
+		}
 	}
 
 	// Set up all the ipv6 ports
 	for (size_t i = 0; i < Ports6.size(); i++) {
 		Ports6[i].FileDescriptor = socket(AF_INET6, SOCK_STREAM, 0);
 		if (Ports6[i].FileDescriptor < 0) {
+			FAIL_CLOSE_SOCKETS(Ports4.size(), i, Ports4, Ports6);
 			return ERR_UNABLE_TO_CREATE_SOCKET;
 		}
 
 		if (bind(
-				Ports6[i].FileDescriptor,
-				(struct sockaddr*) &Ports4[i].AddressStructure,
-				sizeof(Ports4[i].AddressStructure) < 0)
-		) {
+			Ports6[i].FileDescriptor,
+			reinterpret_cast<struct sockaddr*>(&Ports4[i].AddressStructure),
+			sizeof(Ports4[i].AddressStructure) < 0)
+			) {
+			FAIL_CLOSE_SOCKETS(Ports4.size(), i, Ports4, Ports6);
 			return ERR_BIND_FAILED;
 		}
 
@@ -122,21 +165,88 @@ uint32_t Connector::ServerConnection::Start(
 			Ports6[i].FileDescriptor,
 			queueLength
 		);
+
+		FD_SET(Ports6[i].FileDescriptor, fds);
+
+		if (flg_largest_init || Ports6[i].FileDescriptor > largest) {
+			flg_largest_init = true;
+			largest = Ports6[i].FileDescriptor;
+		}
 	}
 
-	// Wait for a connection or data
-	int nfds = (Ports4.size() + Ports6.size());
+	*nfds = largest + 1;
+
+	return ERR_SUCCESS;
+}
+
+uint32_t Connector::ServerConnection::SelectLoop(
+	fd_set& readfds,
+	int nfds
+) {
 	int ret;
+	fd_set fds;
+	while (true) {
+		fds = readfds;
+		if ((ret = select(
+			nfds,
+			&fds,
+			NULL,
+			NULL,
+			NULL
+		))) {
+			// Check if no longer listening
+
+			if (!listening) {
+				ShutDownCleanUp();
+			}
+
+			//
+		}
+	}
+}
+
+#ifdef _WIN32
+#define close closesocket
+#endif
+
+uint32_t Connector::ServerConnection::ShutDownCleanUp(
+) {
+	// 
+	for (auto it = Ports4.begin(); it != Ports4.end(); ++it) {
+		shutdown(it->FileDescriptor, SHUT_RDWR);
+		close(it->FileDescriptor);
+	}
+
+	for (auto it = Ports6.begin(); it != Ports6.end(); ++it) {
+		shutdown(it->FileDescriptor, SHUT_RDWR);
+		close(it->FileDescriptor);
+	}
+}
+
+#ifdef _WIN32
+#undef close
+#endif
+
+uint32_t Connector::ServerConnection::Start(
+) {
+	if (listening)
+		return ERR_ALREADY_LISTENING;
 
 	fd_set readfds;
-	fd_set writefds;
+	FD_ZERO(&readfds);
+	int nfds;
+
+	InitializeListeningSockets(&readfds, &nfds);
 
 	while (true) {
+		fd_set readfds_use = readfds;
 	}
 
 	listening = true;
 	return ERR_SUCCESS;
 }
+
+#undef FAIL_CLOSE_SOCKETS
 
 uint32_t Connector::ServerConnection::Stop(
 ) {
