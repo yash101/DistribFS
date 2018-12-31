@@ -16,14 +16,27 @@ namespace Protocol {
 namespace Protocol {
 
 	class KeyValuePair {
-		void* key;
-		void* value;
+
+	public:
+
 		uint8_t key_length;
 		uint16_t value_length;
+		void* key;
+		void* value;
 	};
 
 	class InitialNegotiationPacket {
+
+	public:
+
 		uint16_t protocol_version;
+	};
+
+	class InitialNegotiationPacketServerResponse {
+
+	public:
+
+		uint8_t status;
 	};
 
 	namespace Control {
@@ -33,18 +46,45 @@ namespace Protocol {
 		A 16-bit value contains the number of keys that are present in the transmission. 
 		*/
 		class ControlPacket {
+			
+		public:
+
 			uint8_t packet_type;
 
 			uint8_t packet_name_length;	// only in named control packets
 			unsigned char* packet_name;			// only in named control packets
 
 			uint16_t kv_count;
-			std::vector<Protocol::KeyValuePair> arguments;
+			Protocol::KeyValuePair* arguments;
 		};
 
 		class ResponsePacket {
+
+		public:
+
 			uint16_t kv_count;
-			std::vector<Protocol::KeyValuePair> arguments;
+			Protocol::KeyValuePair* arguments;
+		};
+
+		class RawDataPacket {
+
+		public:
+
+			uint64_t data_offset;
+			uint16_t data_length;
+			uint8_t* data_buffer;
+		};
+
+		class DifferentialDataChunk {
+			uint64_t offset;
+			uint16_t chunk_length;
+			uint8_t flags;
+			char* data_buffer;
+		};
+
+		class DifferentialDataPacket {
+			uint16_t chunk_count;
+			DifferentialDataChunk* chunks;
 		};
 
 		namespace PacketType {

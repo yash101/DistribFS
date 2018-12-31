@@ -111,6 +111,8 @@ uint32_t Connector::ServerConnection::InitializeListeningSockets(
 			return ERR_UNABLE_TO_CREATE_SOCKET;
 		}
 
+		static const int yes = 1;
+
 		if (setsockopt(
 			Ports4[i].FileDescriptor,
 			SOL_SOCKET,
@@ -187,20 +189,15 @@ uint32_t Connector::ServerConnection::SelectLoop(
 	fd_set fds;
 	while (true) {
 		fds = readfds;
-		if ((ret = select(
-			nfds,
-			&fds,
-			NULL,
-			NULL,
-			NULL
-		))) {
+		if ((ret = select(nfds,	&fds, NULL, NULL, NULL))) {
+
 			// Check if no longer listening
 
 			if (!listening) {
 				ShutDownCleanUp();
 			}
 
-			//
+			// 
 		}
 	}
 }

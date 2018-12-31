@@ -63,13 +63,10 @@ namespace Connector {
 		std::vector<ListeningPort4> Ports4;
 		std::vector<ListeningPort6> Ports6;
 
-		static const uint32_t yes = 1;
-		static const uint32_t no = 0;
-
 		Connector::ControlPacketReceiveHandlerCB ctrl_recv_cb;
 		Connector::AddressFilterHandlerCB address_filter_cb;
 		int queueLength;
-		bool listening;
+		std::atomic<bool> listening;
 
 		void initialize(
 		);
