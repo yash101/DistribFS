@@ -68,6 +68,10 @@ int main(int argc, char** argv) {
 	std::vector<unsigned int> max_lengths;
 
 	std::ifstream fin(Options.csvfin);
+	if (!fin.is_open()) {
+		printf("Error: could not open file %s\n", Options.csvfin);
+		return -1;
+	}
 	ProcessCSV(fin, table, max_lengths);
 
 	return 0;
@@ -102,7 +106,7 @@ int ParseArguments(int argc, char** argv) {
 	if (argc < 2) {
 		Help();
 	}
-
+	
 	int current = 1;
 	while (++current < argc) {
 		if (
@@ -207,5 +211,5 @@ void Help() {
 	printf("    -o[n/t] --overflow=nextline / --overflow=truncate  Overflow behaviour of cells\n");
 	printf("    -h      --headers           First line is headers\n");
 	printf("[not supported yet]-n      --column-count      Number of columns, if lines are not split by a newline\n");
-	printf("    -?      --help        Help menu");
+	printf("    -?      --help        Help menu\n");
 }
