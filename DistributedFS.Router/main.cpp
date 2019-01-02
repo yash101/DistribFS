@@ -107,8 +107,9 @@ int ParseArguments(int argc, char** argv) {
 		Help();
 	}
 	
-	int current = 1;
+	int current = 0;
 	while (++current < argc) {
+		printf("Processing argument %s\n", argv[current]);
 		if (
 			!strcmp(argv[current], "-i") ||
 			!strcmp(argv[current], "--in-file")
