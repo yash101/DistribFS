@@ -1,9 +1,6 @@
 #include "Connector.h"
 #include "errors.h"
 
-#include <unistd.h>
-#include <sys/socket.h>
-
 // Allows all traffic (does nothing)
 static bool DefaultAddressFilter(
 	uint32_t ip_address,
@@ -189,15 +186,58 @@ uint32_t Connector::ServerConnection::SelectLoop(
 	fd_set fds;
 	while (true) {
 		fds = readfds;
-		if ((ret = select(nfds,	&fds, NULL, NULL, NULL))) {
+		ret = select(nfds, &fds, NULL, NULL, NULL);
 
-			// Check if no longer listening
+		if (ret < 0) {
+			int error = errno;
 
-			if (!listening) {
+			if (error == EBADF ||
+				error == EINVAL ||
+				error == ENOMEM
+			) {
 				ShutDownCleanUp();
+				break;
 			}
+		}
 
-			// 
+		if (!listening) {
+			ShutDownCleanUp();
+			break;
+		}
+
+		// find the ready file descriptor, and accept
+		for (size_t i = 0; i < Ports4.size(); i++) {
+			if (ret == 0) break;
+			if (FD_ISSET(Ports4[i].FileDescriptor, &fds)) {
+				ret--;
+
+				// accept the connection
+				Connector::ServerConnection::Ipv4ListeningWorker* worker = new Connector::ServerConnection::Ipv4ListeningWorker;
+
+				static int AddrStructSz = sizeof(worker->AddressStructure);
+				worker->FileDescriptor = accept(
+					Ports4[i].FileDescriptor,
+					(struct sockaddr*) &worker->AddressStructure,
+					(socklen_t*) &AddrStructSz
+				);
+			}
+		}
+
+		for (size_t i = 0; i < Ports6.size(); i++) {
+			if (ret == 0) break;
+			if (FD_ISSET(Ports6[i].FileDescriptor, &fds)) {
+				ret--;
+
+				// accept the connection
+				Connector::ServerConnection::Ipv6ListeningWorker* worker = new Connector::ServerConnection::Ipv6ListeningWorker;
+				
+				static int AddrStructSz = sizeof(worker->AddressStructure);
+				worker->FileDescriptor = accept(
+					Ports6[i].FileDescriptor,
+					(struct sockaddr*) &worker->AddressStructure,
+					(socklen_t*)&AddrStructSz
+				);
+			}
 		}
 	}
 }
@@ -236,7 +276,7 @@ uint32_t Connector::ServerConnection::Start(
 	InitializeListeningSockets(&readfds, &nfds);
 
 	while (true) {
-		fd_set readfds_use = readfds;
+		SelectLoop(readfds, nfds);
 	}
 
 	listening = true;

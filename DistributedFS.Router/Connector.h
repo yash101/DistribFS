@@ -57,6 +57,36 @@ namespace Connector {
 			ListeningPort6();
 		};
 
+		class ListeningWorker {
+
+		public:
+
+			CrossPlatform::FileDescriptor_t FileDescriptor;
+			virtual struct sockaddr* GetAddressStructure(int* size) = 0;
+		};
+
+		class Ipv4ListeningWorker : public ListeningWorker {
+
+		public:
+			struct sockaddr_in AddressStructure;
+			virtual struct sockaddr* GetAddressStructure(int* size) {
+				*size = sizeof(AddressStructure);
+				return (struct sockaddr*) &AddressStructure;
+			}
+		};
+
+		class Ipv6ListeningWorker : public ListeningWorker {
+			
+		public:
+			
+			struct sockaddr_in6 AddressStructure;
+
+			virtual struct sockaddr* GetAddressStructure(int* size) {
+				*size = sizeof(AddressStructure);
+				return (struct sockaddr*) &AddressStructure;
+			}
+		};
+
 		int64_t tv_sec;
 		int64_t tv_usec;
 
